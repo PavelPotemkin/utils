@@ -12,6 +12,7 @@ export interface HttpClientConfig {
   baseURL: string;
   headers?: Record<string, string>;
   timeout?: number;
+  withCredentials?: boolean;
 }
 
 export interface RequestOptions<T> {
@@ -28,6 +29,7 @@ export class HttpClient {
       baseURL: config.baseURL,
       headers: config.headers,
       timeout: config.timeout,
+      withCredentials: config.withCredentials,
     });
   }
 
