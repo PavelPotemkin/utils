@@ -118,3 +118,4 @@ import type { Optional, Brand } from '@pavelpotemkin/utils'
 type UserId = Brand<string, 'UserId'>
 const name: Optional<string> = null // string | null | undefined
 ```
+
