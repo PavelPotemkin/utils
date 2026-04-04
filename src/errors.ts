@@ -66,9 +66,7 @@ export class ResponseValidationError extends HttpError {
     endpoint: string;
     rawData: unknown;
   }) {
-    super(
-      `Response validation failed for ${params.endpoint}: ${params.zodError.message}`,
-    );
+    super(`Response validation failed for ${params.endpoint}: ${params.zodError.message}`);
     this.name = "ResponseValidationError";
     this.zodError = params.zodError;
     this.endpoint = params.endpoint;

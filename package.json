@@ -29,8 +29,9 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint src tests",
-    "lint:fix": "eslint src tests --fix",
+    "lint": "biome check src",
+    "lint:fix": "biome check --fix src",
+    "format": "biome format --write src",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
@@ -39,11 +40,9 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.0.3",
+    "@biomejs/biome": "^2.4.10",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
-    "typescript-eslint": "^8.57.0",
     "vitest": "^4.1.0"
   },
   "repository": {

@@ -28,11 +28,7 @@ export const sanitizeFloatLine = (line: string, join?: JoinMode): string => {
   line = line.replace(/[^\d.-]/g, "");
   const isNegative = line.startsWith("-");
 
-  line = line
-    .replaceAll("-", "")
-    .replace(".", " ")
-    .replaceAll(".", "")
-    .replace(" ", ".");
+  line = line.replaceAll("-", "").replace(".", " ").replaceAll(".", "").replace(" ", ".");
 
   let [whole, fractional] = line.split(".");
 
@@ -75,8 +71,7 @@ export const formatFloatLine = (
   line = (() => {
     if (options!.accuracy === undefined) return line as string;
 
-    if (options!.rounding)
-      return new Decimal(line).toFixed(options!.accuracy, options!.rounding);
+    if (options!.rounding) return new Decimal(line).toFixed(options!.accuracy, options!.rounding);
     else return new Decimal(line).toFixed(options!.accuracy);
   })();
 
@@ -86,15 +81,9 @@ export const formatFloatLine = (
   const whole = lineParts[0]!.replace(/\B(?=(\d{3})+(?!\d))/g, "");
 
   const joined = (() => {
-    if (lineParts[1] === undefined)
-      return isNegative ? `-${whole}` : whole;
+    if (lineParts[1] === undefined) return isNegative ? `-${whole}` : whole;
 
-    const joined = joinParts(
-      whole,
-      lineParts[1],
-      line.includes("."),
-      options.join,
-    );
+    const joined = joinParts(whole, lineParts[1], line.includes("."), options.join);
     return isNegative ? `-${joined}` : joined;
   })();
 
@@ -110,19 +99,14 @@ export interface CountFormat {
 
 export const formatCount = (
   count: number | string | Decimal,
-  {
-    accuracy = 1,
-    trim,
-  }: { accuracy?: number; trim?: boolean } = { accuracy: 1 },
+  { accuracy = 1, trim }: { accuracy?: number; trim?: boolean } = { accuracy: 1 },
 ): CountFormat => {
   if (typeof count === "string") count = parseFloat(count);
   if (count instanceof Decimal) count = count.toNumber();
 
   const divider = (() => {
-    if (count >= 1_000_000_000)
-      return { value: 1_000_000_000, postfix: "B" };
-    else if (count >= 1_000_000)
-      return { value: 1_000_000, postfix: "M" };
+    if (count >= 1_000_000_000) return { value: 1_000_000_000, postfix: "B" };
+    else if (count >= 1_000_000) return { value: 1_000_000, postfix: "M" };
     else if (count >= 1_000) return { value: 1_000, postfix: "K" };
     else return { value: 1, postfix: "" };
   })();

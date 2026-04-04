@@ -1,12 +1,7 @@
 import axios, { AxiosError, type AxiosInstance } from "axios";
 import type { ZodType } from "zod";
-import { Ok, Err, type Result } from "./result";
-import {
-  ApiError,
-  NetworkError,
-  ResponseValidationError,
-  type HttpError,
-} from "./errors";
+import { ApiError, type HttpError, NetworkError, ResponseValidationError } from "./errors";
+import { Err, Ok, type Result } from "./result";
 
 export interface HttpClientConfig {
   baseURL: string;
@@ -33,10 +28,7 @@ export class HttpClient {
     });
   }
 
-  async get<T>(
-    path: string,
-    options?: RequestOptions<T>,
-  ): Promise<Result<T, HttpError>> {
+  async get<T>(path: string, options?: RequestOptions<T>): Promise<Result<T, HttpError>> {
     return this.request("GET", path, undefined, options);
   }
 
@@ -64,10 +56,7 @@ export class HttpClient {
     return this.request("PATCH", path, body, options);
   }
 
-  async delete<T>(
-    path: string,
-    options?: RequestOptions<T>,
-  ): Promise<Result<T, HttpError>> {
+  async delete<T>(path: string, options?: RequestOptions<T>): Promise<Result<T, HttpError>> {
     return this.request("DELETE", path, undefined, options);
   }
 
@@ -82,9 +71,7 @@ export class HttpClient {
         method,
         url: path,
         data: body,
-        params: options?.params
-          ? this.serializeParams(options.params)
-          : undefined,
+        params: options?.params ? this.serializeParams(options.params) : undefined,
         headers: options?.headers,
       });
 
@@ -124,9 +111,7 @@ export class HttpClient {
     }
   }
 
-  private serializeParams(
-    params: Record<string, unknown>,
-  ): Record<string, string> {
+  private serializeParams(params: Record<string, unknown>): Record<string, string> {
     const result: Record<string, string> = {};
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined || value === null) continue;

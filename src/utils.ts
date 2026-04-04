@@ -36,10 +36,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     }
   };
 
-  const debouncedFunction = function (
-    this: ThisParameterType<T>,
-    ...args: Parameters<T>
-  ): void {
+  const debouncedFunction = function (this: ThisParameterType<T>, ...args: Parameters<T>): void {
     cancel();
     timeoutId = setTimeout(() => {
       fn.apply(this, args);
@@ -54,7 +51,7 @@ export function throttle<T extends (...args: unknown[]) => void>(
   delay: number,
 ): (...args: Parameters<T>) => void {
   let lastCall = 0;
-  return function (...args: Parameters<T>) {
+  return (...args: Parameters<T>) => {
     const now = Date.now();
     if (now - lastCall >= delay) {
       lastCall = now;
