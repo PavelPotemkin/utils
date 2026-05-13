@@ -13,7 +13,7 @@ export {
   sanitizeFloatLine,
   trimTrailingZeroes,
 } from "./format";
-export type { HttpClientConfig, RequestOptions } from "./http-client";
+export type { HttpClientConfig, RequestOptions, ValidationSchema } from "./http-client";
 
 export { HttpClient } from "./http-client";
 export { fromDecimalToNano, fromNanoToDecimal } from "./nano";

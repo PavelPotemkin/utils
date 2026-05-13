@@ -3,7 +3,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Shared TypeScript utilities: Result type, HTTP client, validation, formatting",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -34,16 +34,19 @@
     "format": "biome format --write src",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
-  "dependencies": {
+  "peerDependencies": {
     "axios": "^1.7.0",
     "decimal.js": "^10.4.0",
-    "zod": "^3.24.0"
+    "zod": "^3.24.0 || ^4.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
+    "axios": "^1.7.0",
+    "decimal.js": "^10.4.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "zod": "^3.24.0"
   },
   "repository": {
     "type": "git",

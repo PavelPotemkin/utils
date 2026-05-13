@@ -77,6 +77,19 @@ describe("HttpClient", () => {
       });
     });
 
+    it("passes abort signal to axios request", async () => {
+      mockRequest.mockResolvedValue({ data: [] });
+      const controller = new AbortController();
+
+      await client.get("/users", { signal: controller.signal });
+
+      expect(mockRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          signal: controller.signal,
+        }),
+      );
+    });
+
     it("serializes query params", async () => {
       mockRequest.mockResolvedValue({ data: [] });
 

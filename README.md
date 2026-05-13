@@ -50,6 +50,12 @@ if (isOk(result)) {
 
 Методы: `get`, `post`, `put`, `patch`, `delete`.
 
+Request options:
+- `params` — query params, arrays serialize as comma-separated values
+- `schema` — zod-compatible schema with `safeParse`
+- `headers` — request-level headers
+- `signal` — `AbortSignal` for request cancellation
+
 Ошибки:
 - `ApiError` — HTTP ошибки (4xx, 5xx) с полями `status`, `body`, `endpoint`
 - `ResponseValidationError` — невалидный ответ по zod-схеме
@@ -118,4 +124,3 @@ import type { Optional, Brand } from '@pavelpotemkin/utils'
 type UserId = Brand<string, 'UserId'>
 const name: Optional<string> = null // string | null | undefined
 ```
-

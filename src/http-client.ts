@@ -1,7 +1,11 @@
 import axios, { AxiosError, type AxiosInstance } from "axios";
-import type { ZodType } from "zod";
+import type { ZodError } from "zod";
 import { ApiError, type HttpError, NetworkError, ResponseValidationError } from "./errors";
 import { Err, Ok, type Result } from "./result";
+
+export interface ValidationSchema<T> {
+  safeParse(data: unknown): { success: true; data: T } | { success: false; error: ZodError };
+}
 
 export interface HttpClientConfig {
   baseURL: string;
@@ -12,8 +16,9 @@ export interface HttpClientConfig {
 
 export interface RequestOptions<T> {
   params?: Record<string, unknown>;
-  schema?: ZodType<T>;
+  schema?: ValidationSchema<T>;
   headers?: Record<string, string>;
+  signal?: AbortSignal;
 }
 
 export class HttpClient {
@@ -24,7 +29,7 @@ export class HttpClient {
       baseURL: config.baseURL,
       headers: config.headers,
       timeout: config.timeout,
-      withCredentials: config.withCredentials,
+      ...(config.withCredentials === undefined ? {} : { withCredentials: config.withCredentials }),
     });
   }
 
@@ -73,6 +78,7 @@ export class HttpClient {
         data: body,
         params: options?.params ? this.serializeParams(options.params) : undefined,
         headers: options?.headers,
+        ...(options?.signal ? { signal: options.signal } : {}),
       });
 
       if (options?.schema) {
