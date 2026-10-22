@@ -1,87 +1,54 @@
-import { describe, it, expect } from "vitest";
-import { Ok, Err, isOk, isErr, unwrap, type Result } from "../src/result";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { type Err, err, isErr, isOk, type Ok, ok, type Result, unwrap } from "../src";
 
 describe("Result", () => {
-  describe("Ok", () => {
-    it("creates ok result", () => {
-      const result = Ok(42);
-      expect(result).toEqual({ ok: true, value: 42 });
-    });
-
-    it("works with complex types", () => {
-      const result = Ok({ name: "test", items: [1, 2, 3] });
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.name).toBe("test");
-        expect(result.value.items).toEqual([1, 2, 3]);
-      }
-    });
+  it("ok / err build the two shapes", () => {
+    expect(ok(42)).toEqual({ ok: true, value: 42 });
+    const e = new Error("boom");
+    expect(err(e)).toEqual({ ok: false, error: e });
   });
 
-  describe("Err", () => {
-    it("creates error result", () => {
-      const error = new Error("fail");
-      const result = Err(error);
-      expect(result).toEqual({ ok: false, error });
-    });
-
-    it("works with custom error types", () => {
-      class CustomError extends Error {
-        code = 404;
-      }
-      const result = Err(new CustomError("not found"));
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error).toBeInstanceOf(CustomError);
-        expect(result.error.code).toBe(404);
-      }
-    });
+  it("isOk / isErr narrow", () => {
+    const results: Result<number, Error>[] = [ok(1), err(new Error("x"))];
+    const [good, bad] = results as [Result<number, Error>, Result<number, Error>];
+    expect(isOk(good)).toBe(true);
+    expect(isErr(good)).toBe(false);
+    expect(isOk(bad)).toBe(false);
+    expect(isErr(bad)).toBe(true);
+    if (isOk(good)) expectTypeOf(good.value).toEqualTypeOf<number>();
+    if (isErr(bad)) expectTypeOf(bad.error).toEqualTypeOf<Error>();
   });
 
-  describe("isOk", () => {
-    it("returns true for Ok", () => {
-      expect(isOk(Ok("value"))).toBe(true);
-    });
-
-    it("returns false for Err", () => {
-      expect(isOk(Err(new Error("fail")))).toBe(false);
-    });
+  it("unwrap returns the value or throws the error itself", () => {
+    expect(unwrap(ok("v"))).toBe("v");
+    const e = new TypeError("bad");
+    expect(() => unwrap(err(e))).toThrow(e);
   });
 
-  describe("isErr", () => {
-    it("returns true for Err", () => {
-      expect(isErr(Err(new Error("fail")))).toBe(true);
-    });
-
-    it("returns false for Ok", () => {
-      expect(isErr(Ok(42))).toBe(false);
-    });
+  it("unwrap wraps a non-Error error into Error with cause", () => {
+    try {
+      unwrap(err("plain"));
+      expect.unreachable();
+    } catch (thrown) {
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toBe("unwrap() on Err: plain");
+      expect((thrown as Error).cause).toBe("plain");
+    }
   });
 
-  describe("unwrap", () => {
-    it("returns value for Ok", () => {
-      expect(unwrap(Ok(42))).toBe(42);
-    });
+  it("types: ok/err are assignable to Result, default E is Error", () => {
+    const a: Result<number> = ok(1);
+    const b: Result<number> = err(new Error("x"));
+    const c: Result<number, string> = err("x");
+    expectTypeOf(ok(1)).toEqualTypeOf<Ok<number>>();
+    expectTypeOf(err("x")).toEqualTypeOf<Err<string>>();
+    expectTypeOf<Result<number>>().toEqualTypeOf<Ok<number> | Err<Error>>();
+    expect([a.ok, b.ok, c.ok]).toEqual([true, false, false]);
+  });
 
-    it("throws error for Err", () => {
-      const error = new Error("unwrap failed");
-      expect(() => unwrap(Err(error))).toThrow("unwrap failed");
-    });
-
-    it("preserves error type when throwing", () => {
-      class CustomError extends Error {
-        code = 500;
-      }
-      const err = new CustomError("server error");
-      const result: Result<string, CustomError> = Err(err);
-
-      try {
-        unwrap(result);
-        expect.unreachable("should have thrown");
-      } catch (e) {
-        expect(e).toBeInstanceOf(CustomError);
-        expect((e as CustomError).code).toBe(500);
-      }
-    });
+  it("types: a function returning ok() or err() infers a Result-compatible union", () => {
+    const pick = (flag: boolean) => (flag ? ok(1) : err(new RangeError("r")));
+    const r: Result<number, RangeError> = pick(true);
+    expect(unwrap(r)).toBe(1);
   });
 });

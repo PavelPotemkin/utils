@@ -1,126 +1,146 @@
 # @pavelpotemkin/utils
 
-Shared TypeScript utilities: Result type, HTTP client, validation, formatting.
+`Result` type and an axios-based HTTP client that never throws.
+
+- `Result<T, E>` — `{ ok: true, value } | { ok: false, error }`, same shape and names as
+  `@pavelpotemkin/portals-market-api-sdk` 2.x.
+- `HttpClient` — every method returns `Result<T, HttpError>`; timeouts, `AbortSignal`, response schemas.
+- One error class `HttpError` with `kind`.
+- Schemas are structural: zod 3, zod 4 or anything with `safeParse`. zod is not a dependency.
+- Peer dependency: `axios@^1.20.0`. ESM + CJS, `sideEffects: false`.
+
+Upgrading from 1.x: see [CHANGELOG.md](./CHANGELOG.md).
 
 ## Install
 
 ```bash
-npm install @pavelpotemkin/utils
+npm install @pavelpotemkin/utils axios
 ```
 
-## API
-
-### Result
+## Result
 
 ```ts
-import { Ok, Err, isOk, isErr, unwrap, type Result } from '@pavelpotemkin/utils'
+import { ok, err, isOk, isErr, unwrap, type Result } from "@pavelpotemkin/utils";
 
-const result: Result<number> = Ok(42)
+const parse = (s: string): Result<number> => {
+  const n = Number(s);
+  return Number.isNaN(n) ? err(new Error(`not a number: ${s}`)) : ok(n);
+};
 
-if (isOk(result)) {
-  console.log(result.value) // 42
-}
+const r = parse("42");
+if (isOk(r)) r.value; // number
+if (isErr(r)) r.error; // Error
 
-unwrap(Ok(42))          // 42
-unwrap(Err(new Error())) // throws
+unwrap(ok(1)); // 1
+unwrap(err(new Error("x"))); // throws that error
 ```
 
-### HttpClient
+`Result<T, E = Error>`, types `Ok<T>` and `Err<E>`. `ok()` returns `Ok<T>`, `err()` returns `Err<E>`; both are
+assignable to any `Result` with a compatible `T`/`E`.
 
-Axios-обёртка, возвращающая `Result` вместо исключений. Поддерживает zod-валидацию ответов.
+## HttpClient
 
 ```ts
-import { HttpClient } from '@pavelpotemkin/utils'
-import { z } from 'zod'
+import { HttpClient, isHttpError } from "@pavelpotemkin/utils";
+import { z } from "zod";
 
 const client = new HttpClient({
-  baseURL: 'https://api.example.com',
-  headers: { Authorization: 'Bearer token' },
-  timeout: 5000,
-})
+  baseURL: "https://api.example.com/api",
+  headers: { "Content-Type": "application/json" },
+  timeoutMs: 20_000, // default 0 — no timeout
+});
 
-const UserSchema = z.object({ id: z.number(), name: z.string() })
+// axios stays public: interceptors, defaults.adapter (mocks), direct calls.
+client.axios.interceptors.request.use((config) => {
+  config.headers.set("Authorization", `tma ${token}`);
+  return config;
+});
 
-const result = await client.get('/users/1', { schema: UserSchema })
+const User = z.object({ id: z.number(), name: z.string() });
 
-if (isOk(result)) {
-  console.log(result.value) // { id: 1, name: "..." }
+const res = await client.get("/users/1", { schema: User }); // Result<{ id: number; name: string }, HttpError>
+if (res.ok) {
+  console.log(res.value.name);
+} else if (isHttpError(res.error, "http") && res.error.status === 404) {
+  // not found
+} else {
+  console.error(res.error.kind, res.error.message);
 }
 ```
 
-Методы: `get`, `post`, `put`, `patch`, `delete`.
+Methods: `get(path, options)`, `post(path, body, options)`, `put`, `patch`, `delete`, and
+`request(method, path, body, options)`. Bodies are sent as JSON by axios.
 
 Request options:
-- `params` — query params, arrays serialize as comma-separated values
-- `schema` — zod-compatible schema with `safeParse`
-- `headers` — request-level headers
-- `signal` — `AbortSignal` for request cancellation
 
-Ошибки:
-- `ApiError` — HTTP ошибки (4xx, 5xx) с полями `status`, `body`, `endpoint`
-- `ResponseValidationError` — невалидный ответ по zod-схеме
-- `NetworkError` — сетевые ошибки
+| Option | Meaning |
+| --- | --- |
+| `params` | Query. Arrays are joined with `,` (`ids=1,2`); `undefined`, `null` and empty arrays are skipped |
+| `schema` | Response schema with `safeParse` (zod 3/4); the result type is inferred from it |
+| `headers` | Request headers |
+| `signal` | `AbortSignal` → `kind: "aborted"` |
+| `timeoutMs` | Overrides the client `timeoutMs`; `0` — none → `kind: "timeout"` |
+| `responseType` | `"json"` (default) or `"text"` (raw string as the value) |
 
-### Validation
+Timeouts and cancellation work even with custom adapters that ignore `signal`: the client stops waiting and
+also aborts the axios request. Only `AbortController` and `setTimeout` are used (no `AbortSignal.timeout`/`any`),
+so older WebViews are fine.
+
+The body is requested as text and parsed by the client: an empty body (204) gives `undefined`, a non-JSON 2xx body
+is `kind: "parse"`. If an adapter returns an object (mock adapters), it is taken as the parsed body.
+
+## HttpError
 
 ```ts
-import { validateSchema, mustValue } from '@pavelpotemkin/utils'
-import { z } from 'zod'
-
-const data = validateSchema(z.object({ name: z.string() }), input) // throws ValidationError
-
-const user = mustValue(maybeUser, 'User not found') // throws if null/undefined
+class HttpError extends Error {
+  name: "HttpError";
+  kind: "http" | "network" | "timeout" | "aborted" | "parse" | "validation";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  endpoint: string;     // path as passed to the client
+  status?: number;      // http, parse, validation
+  code?: string;        // `code` from a JSON error body
+  data?: unknown;       // parsed body; for validation — the data that failed the schema
+  body?: string;        // raw text when the adapter returned text
+  issues?: ValidationIssue[]; // validation
+  retryable: boolean;
+  cause?: unknown;      // network/timeout/aborted: the original error
+  isBadRequest; isUnauthorized; isNotFound; isRateLimited; isServerError; // only for kind "http"
+}
 ```
 
-### Format
+| `kind` | When |
+| --- | --- |
+| `http` | Non-2xx response |
+| `network` | No response: connection failed, the adapter or an interceptor threw |
+| `timeout` | `timeoutMs` or axios `timeout` elapsed |
+| `aborted` | Caller's `signal` fired or axios canceled the request |
+| `parse` | 2xx body is not JSON |
+| `validation` | 2xx JSON did not pass `schema` |
+
+`message`: `"<METHOD> <endpoint>: HTTP <status>: <body.message | statusText>"` for `http`, a similar
+`"<METHOD> <endpoint>: …"` line for the other kinds.
+
+`retryable`: `true` for 429 (any method) and for 408/500/502/503/504, `network`, `timeout` on `GET`, `PUT`,
+`DELETE`. `POST`/`PATCH` after a lost response are not retryable: reconcile the outcome instead.
+
+`isHttpError(error, ...kinds)` is a type guard; with `"http"` it narrows `status` to `number`, with
+`"validation"` — `issues` to an array:
 
 ```ts
-import { formatFloatLine, formatCount } from '@pavelpotemkin/utils'
-
-formatFloatLine(1234.5678, { accuracy: 2 })  // "1234.57"
-formatFloatLine(1.999, { accuracy: 2, rounding: Decimal.ROUND_DOWN }) // "1.99"
-
-formatCount(1500)       // { full: "1.5K", value: "1.5", postfix: "K", raw: Decimal }
-formatCount(2_500_000)  // { full: "2.5M", ... }
+if (isHttpError(error, "http") && error.status >= 500) …
+if (isHttpError(error, "network", "timeout")) …
 ```
 
-### Nano
+The constructor is public for tests and mocks; `message`, `code` and `retryable` have defaults:
 
 ```ts
-import { fromNanoToDecimal, fromDecimalToNano } from '@pavelpotemkin/utils'
-
-fromNanoToDecimal('1500000000') // Decimal(1.5)
-fromDecimalToNano(new Decimal(1.5)) // 1500000000
+new HttpError({ kind: "http", method: "POST", endpoint: "/bet", status: 422, data: { code: "LIMIT" } });
 ```
 
-### Utils
+## Types
 
 ```ts
-import {
-  awaitMs,
-  getRandomInt,
-  debounce,
-  throttle,
-  createDelayedResolver,
-  hexToRgba,
-} from '@pavelpotemkin/utils'
+import type { Brand, ValidationSchema, ValidationIssue } from "@pavelpotemkin/utils";
 
-await awaitMs(100)
-getRandomInt(1, 10)
-
-const { debouncedFunction, cancel } = debounce(fn, 300)
-const throttled = throttle(fn, 100)
-
-const { promise, resolve } = createDelayedResolver<string>()
-
-hexToRgba('#ff0000', 0.5) // "rgba(255, 0, 0, 0.5)"
-```
-
-### Types
-
-```ts
-import type { Optional, Brand } from '@pavelpotemkin/utils'
-
-type UserId = Brand<string, 'UserId'>
-const name: Optional<string> = null // string | null | undefined
+type UserId = Brand<string, "UserId">;
 ```

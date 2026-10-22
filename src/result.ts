@@ -1,24 +1,40 @@
-export type Ok<T> = {
-  ok: true;
-  value: T;
-};
+/** Successful result. */
+export interface Ok<T> {
+  readonly ok: true;
+  readonly value: T;
+}
 
-export type Err<E extends Error> = {
-  ok: false;
-  error: E;
-};
+/** Failed result. */
+export interface Err<E> {
+  readonly ok: false;
+  readonly error: E;
+}
 
-export type Result<T, E extends Error = Error> = Ok<T> | Err<E>;
+/** Result of an operation that does not throw: `{ ok: true, value } | { ok: false, error }`. */
+export type Result<T, E = Error> = Ok<T> | Err<E>;
 
-export const Ok = <T>(value: T): Result<T> => ({ ok: true, value });
-export const Err = <E extends Error>(error: E): Result<never, E> => ({ ok: false, error });
+export function ok<T>(value: T): Ok<T> {
+  return { ok: true, value };
+}
 
-export const isOk = <T, E extends Error = Error>(result: Result<T, E>): result is Ok<T> =>
-  result.ok;
-export const isErr = <T, E extends Error = Error>(result: Result<T, E>): result is Err<E> =>
-  !result.ok;
+export function err<E>(error: E): Err<E> {
+  return { ok: false, error };
+}
 
-export const unwrap = <T, E extends Error = Error>(result: Result<T, E>): T => {
-  if (isOk(result)) return result.value;
-  throw result.error;
-};
+export function isOk<T, E>(result: Result<T, E>): result is Ok<T> {
+  return result.ok;
+}
+
+export function isErr<T, E>(result: Result<T, E>): result is Err<E> {
+  return !result.ok;
+}
+
+/**
+ * Value of a successful result. For a failed one throws the error itself when it is an `Error`,
+ * otherwise an `Error` with the original value in `cause`.
+ */
+export function unwrap<T, E>(result: Result<T, E>): T {
+  if (result.ok) return result.value;
+  if (result.error instanceof Error) throw result.error;
+  throw new Error(`unwrap() on Err: ${String(result.error)}`, { cause: result.error });
+}

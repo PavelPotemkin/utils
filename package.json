@@ -3,9 +3,18 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "1.1.0",
-  "description": "Shared TypeScript utilities: Result type, HTTP client, validation, formatting",
+  "version": "2.0.0",
+  "description": "Result type and an axios-based HTTP client that never throws",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PavelPotemkin/utils.git"
+  },
   "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -22,35 +31,32 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "biome check src",
-    "lint:fix": "biome check --fix src",
-    "format": "biome format --write src",
+    "lint": "biome check src tests",
+    "lint:fix": "biome check --fix src tests",
+    "format": "biome format --write src tests",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "peerDependencies": {
-    "axios": "^1.7.0",
-    "decimal.js": "^10.4.0",
-    "zod": "^3.24.0 || ^4.0.0"
+    "axios": "^1.20.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.10",
-    "axios": "^1.7.0",
-    "decimal.js": "^10.4.0",
-    "tsup": "^8.0.0",
-    "typescript": "^5.0.0",
-    "vitest": "^4.1.0",
-    "zod": "^3.24.0"
+    "@biomejs/biome": "^2.6.2",
+    "@types/node": "^20.19.43",
+    "axios": "^1.20.0",
+    "tsup": "^8.5.1",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.12",
+    "zod": "^4.6.7"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/PavelPotemkin/utils.git"
-  },
-  "license": "MIT"
+  "overrides": {
+    "esbuild": "^0.28.2"
+  }
 }
